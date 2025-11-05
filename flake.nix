@@ -2,62 +2,101 @@
   description = "IronKaggleProject with Python environment managed by uv";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs.pyproject-nix.follows = "pyproject-nix";
+      inputs.uv2nix.follows = "uv2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     {
-      self,
       nixpkgs,
-      flake-utils,
+      pyproject-nix,
+      uv2nix,
+      pyproject-build-systems,
+      ...
     }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
+    let
+      inherit (nixpkgs) lib;
+      forAllSystems = lib.genAttrs lib.systems.flakeExposed;
 
-        # Main packages for development including uv, jupyter, and zsh
-        mainPackages = with pkgs; [
-          python3
-          uv
-          jupyter
-          zsh
-          marp-cli
-        ];
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = mainPackages;
+      workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
 
-          # Shell hook to setup Python environment with uv
-          shellHook = ''
-            echo "Entering development environment with uv-managed Python packages"
-            echo "Run 'uv run jupyter notebook' to start Jupyter"
-            uv sync
-            export UV_PYTHON=${pkgs.python3}/bin/python
-            export UV_PYTHON_DOWNLOADS=never
-            export SHELL=${pkgs.zsh}/bin/zsh
-            exec zsh
-          '';
-        };
+      overlay = workspace.mkPyprojectOverlay {
+        sourcePreference = "wheel";
+      };
 
-        packages = {
-          # Package that can be built with uv-managed dependencies
-          default = pkgs.stdenv.mkDerivation {
-            name = "IronKaggleProject-uv-env";
-            src = ./.;
+      editableOverlay = workspace.mkEditablePyprojectOverlay {
+        root = "$REPO_ROOT";
+      };
 
-            buildInputs = mainPackages;
+      pythonSets = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          python = pkgs.python313;
+        in
+        (pkgs.callPackage pyproject-nix.build.packages {
+          inherit python;
+        }).overrideScope
+          (
+            lib.composeManyExtensions [
+              pyproject-build-systems.overlays.wheel
+              overlay
+            ]
+          )
+      );
 
-            installPhase = "true";
-            buildPhase = "true";
-            fixupPhase = "true";
-
-            dontConfigure = true;
-            doInstall = true;
+    in
+    {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          pythonSet = pythonSets.${system}.overrideScope editableOverlay;
+          virtualenv = pythonSet.mkVirtualEnv "IronKaggleProject-dev-env" workspace.deps.all;
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              virtualenv
+              pkgs.uv
+              pkgs.jupyter
+              pkgs.zsh
+              pkgs.marp-cli
+            ];
+            env = {
+              UV_NO_SYNC = "1";
+              UV_PYTHON = pythonSet.python.interpreter;
+              UV_PYTHON_DOWNLOADS = "never";
+            };
+            shellHook = ''
+              unset PYTHONPATH
+              export REPO_ROOT=$(git rev-parse --show-toplevel)
+              echo "Development environment ready with all Python dependencies!"
+              echo "Python packages from pyproject.toml are available."
+            '';
           };
-        };
-      }
-    );
+        }
+      );
+
+      packages = forAllSystems (system: {
+        default = pythonSets.${system}.mkVirtualEnv "IronKaggleProject-env" workspace.deps.default;
+      });
+    };
 }
