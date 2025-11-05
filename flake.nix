@@ -90,6 +90,8 @@
               export REPO_ROOT=$(git rev-parse --show-toplevel)
               echo "Development environment ready with all Python dependencies!"
               echo "Python packages from pyproject.toml are available."
+              echo "Using zsh as the default shell."
+              exec zsh
             '';
           };
         }
