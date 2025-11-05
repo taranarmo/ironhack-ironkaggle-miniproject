@@ -561,7 +561,7 @@ dependencies = [
 requires-dist = [
     { name = "ipython" },
     { name = "jupyter" },
-    { name = "kagglehub", specifier = ">=0.3.13" },
+    { name = "kagglehub" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "pandas" },

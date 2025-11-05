@@ -12,6 +12,6 @@ dependencies = [
     "plotly",
     "scikit-learn",
     "ipython",
-    "kagglehub>=0.3.13",
+    "kagglehub",
     "jupyter"
 ]
