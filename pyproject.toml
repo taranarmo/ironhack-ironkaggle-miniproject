@@ -1,0 +1,17 @@
+[project]
+name = "IronKaggleProject"
+version = "0.1.0"
+description = "Kaggle project with Python data science stack"
+requires-python = ">=3.13"
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "scikit-learn",
+    "ipython",
+    "kagglehub>=0.3.13",
+    "jupyter"
+]
