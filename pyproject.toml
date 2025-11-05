@@ -13,5 +13,6 @@ dependencies = [
     "scikit-learn",
     "ipython",
     "kagglehub",
-    "jupyter"
+    "jupyter",
+    "catppuccin>=2.5.0",
 ]
