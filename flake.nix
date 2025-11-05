@@ -19,6 +19,7 @@
 
         # Main packages for development including uv, jupyter, and zsh
         mainPackages = with pkgs; [
+          python3
           uv
           jupyter
           zsh
@@ -32,8 +33,10 @@
           # Shell hook to setup Python environment with uv
           shellHook = ''
             echo "Entering development environment with uv-managed Python packages"
-            echo "Run 'uv sync' to install dependencies from pyproject.toml"
             echo "Run 'uv run jupyter notebook' to start Jupyter"
+            uv sync
+            export UV_PYTHON=${pkgs.python3}/bin/python
+            export UV_PYTHON_DOWNLOADS=never
             export SHELL=${pkgs.zsh}/bin/zsh
             exec zsh
           '';
