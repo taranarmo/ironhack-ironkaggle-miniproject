@@ -10,13 +10,15 @@ import sklearn
 
 mpl.style.use(catppuccin.PALETTE.mocha.identifier)
 
-dataset_path = ""
-
 # %%
-import kagglehub
+try:
+    import kagglehub
+    dataset_path = kagglehub.dataset_download("minasameh55/king-country-houses-aa")
+    dataset_path = Path(dataset_path)
+except ModuleNotFoundError:
+    dataset_path = ""
 
-dataset_path = kagglehub.dataset_download("minasameh55/king-country-houses-aa")
-dataset_path = Path(dataset_path)
+
 
 # %%
 if not dataset_path:
