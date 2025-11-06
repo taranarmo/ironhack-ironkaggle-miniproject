@@ -36,7 +36,7 @@ df.dropna().shape
 # target variable is price
 # date can be probably dropped (post dates, just one year thus temporal dynamics isn't available)
 # no NaNs
-# half of yr_renovated values are 0 which probably is "not known"
+# half of yr_renovated values are 0 which is probably "not known"
 # categorical columns are already encoded
 
 # %%
@@ -56,7 +56,7 @@ plt.show()
 # %%
 df.plot.box()
 plt.show()
-# most cols have densly distributed values except price and sqft_lot
+# most columnss have densly distributed values except price and sqft_lot which have more dispersion to the right
 
 # %%
 scaler = sklearn.preprocessing.StandardScaler()
