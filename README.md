@@ -1,7 +1,7 @@
 # IronKaggle House Price Prediction Project
 
 ## Overview
-This project predicts house prices in King County, USA using machine learning techniques. The dataset contains 21,613 records with 20 features describing various aspects of residential homes.
+This project predicts house prices in King County, USA using machine learning techniques. The [dataset](https://www.kaggle.com/datasets/minasameh55/king-country-houses-aa) contains 21,613 records with 20 features describing various aspects of residential homes.
 
 ## Requirements
 
