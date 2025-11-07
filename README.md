@@ -64,8 +64,9 @@ If you have [Nix](https://nixos.org/) then `nix develop` will create working env
 
 ## Key Findings
 
-- Top features influencing house prices in King County
-- Best performing ML model for price prediction after feature optimization
+- House size and location influencing house prices in King County the most
+- The most singificant feature is `grade` though it's a synthetic value based on other parameters
+- Among chosen models Gradient boosting ones performed the best (on as raw as possible dataset, with only removed outliers)
 - Model performance metrics (R² and MSE) comparing different approaches
 - Impact of feature selection and filtering on model performance
 - Insights about house price determinants in the region
