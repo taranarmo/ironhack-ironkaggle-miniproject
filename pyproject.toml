@@ -15,4 +15,5 @@ dependencies = [
     "kagglehub",
     "jupyter",
     "catppuccin>=2.5.0",
+    "xgboost>=3.1.1",
 ]
