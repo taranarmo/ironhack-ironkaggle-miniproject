@@ -143,8 +143,6 @@ print_report(knn, **scaled_features)
 
 # %% [markdown]
 # ## Model Improvement
-
-# %% [markdown]
 # ### Handle multicollinearity by removing highly correlated features
 
 # %%
@@ -238,7 +236,7 @@ features_after_multicoll_and_low_corr = [f for f in selected_features if f in fe
 
 print(f"\nFeatures after removing both multicollinearity and low-correlation features: {features_after_multicoll_and_low_corr}")
 
-# %% [markdown]
+# %%
 # Train models with features that survived both filters
 X_train_filtered = X_train[features_after_multicoll_and_low_corr]
 X_test_filtered = X_test[features_after_multicoll_and_low_corr]
@@ -287,30 +285,52 @@ print(f"Test set shape after outlier removal: {X_test_out.shape}")
 # Try ensemble methods
 
 # %%
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, AdaBoostRegressor
 from sklearn.svm import SVR
 from sklearn.model_selection import GridSearchCV
 
-# %% [markdown]
-# Random Forest Regressor with filtered features
+# Import XGBoost if available
+try:
+    from xgboost import XGBRegressor
+    xgb_available = True
+except ImportError:
+    print("XGBoost not available, skipping XGBoost models")
+    xgb_available = False
+    XGBRegressor = None
 
 # %%
+# Random Forest Regressor on different feature sets
+# 1. Unfiltered, unscaled features
+rf_unfiltered = RandomForestRegressor(random_state=42)
+rf_unfiltered.fit(X_train, y_train)
+print("\nRandom Forest Regressor (unfiltered, unscaled features)")
+print_report(rf_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Filtered, unscaled features
 rf_filtered = RandomForestRegressor(random_state=42)
 rf_filtered.fit(X_train_filtered, y_train)
-print("\nRandom Forest Regressor (with feature filtering)")
+print("\nRandom Forest Regressor (filtered, unscaled features)")
 print_report(rf_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
 
-# %% [markdown]
-# Hyperparameter tuning for Random Forest with filtered features
+# 3. Filtered, scaled features
+X_train_filtered_scaled = X_train_scaled[features_after_multicoll_and_low_corr]
+X_test_filtered_scaled = X_test_scaled[features_after_multicoll_and_low_corr]
+
+rf_filtered_scaled = RandomForestRegressor(random_state=42)
+rf_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+print("\nRandom Forest Regressor (filtered, scaled features)")
+print_report(rf_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
 
 # %%
+# Hyperparameter tuning for Random Forest on different feature sets
 param_grid_rf = {
     'n_estimators': [50, 100, 200],
     'max_depth': [None, 10, 20],
     'min_samples_split': [2, 5, 10]
 }
 
-grid_search_rf = GridSearchCV(
+# 1. Tuned Random Forest on unfiltered, unscaled features
+grid_search_rf_unfiltered = GridSearchCV(
     RandomForestRegressor(random_state=42),
     param_grid_rf,
     cv=3,
@@ -318,33 +338,75 @@ grid_search_rf = GridSearchCV(
     n_jobs=-1
 )
 
-grid_search_rf.fit(X_train_filtered, y_train)
-best_rf_filtered = grid_search_rf.best_estimator_
+grid_search_rf_unfiltered.fit(X_train, y_train)
+best_rf_unfiltered = grid_search_rf_unfiltered.best_estimator_
 
-print("\nTuned Random Forest Regressor (with feature filtering)")
-print(f"Best parameters: {grid_search_rf.best_params_}")
+print("\nTuned Random Forest Regressor (unfiltered, unscaled features)")
+print(f"Best parameters: {grid_search_rf_unfiltered.best_params_}")
+print_report(best_rf_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Tuned Random Forest on filtered, unscaled features
+grid_search_rf_filtered = GridSearchCV(
+    RandomForestRegressor(random_state=42),
+    param_grid_rf,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_rf_filtered.fit(X_train_filtered, y_train)
+best_rf_filtered = grid_search_rf_filtered.best_estimator_
+
+print("\nTuned Random Forest Regressor (filtered, unscaled features)")
+print(f"Best parameters: {grid_search_rf_filtered.best_params_}")
 print_report(best_rf_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
 
-# %% [markdown]
-# Gradient Boosting Regressor with filtered features
+# 3. Tuned Random Forest on filtered, scaled features
+grid_search_rf_filtered_scaled = GridSearchCV(
+    RandomForestRegressor(random_state=42),
+    param_grid_rf,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_rf_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+best_rf_filtered_scaled = grid_search_rf_filtered_scaled.best_estimator_
+
+print("\nTuned Random Forest Regressor (filtered, scaled features)")
+print(f"Best parameters: {grid_search_rf_filtered_scaled.best_params_}")
+print_report(best_rf_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
 
 # %%
+# Gradient Boosting Regressor on different feature sets
+# 1. Unfiltered, unscaled features
+gb_unfiltered = GradientBoostingRegressor(random_state=42)
+gb_unfiltered.fit(X_train, y_train)
+print("\nGradient Boosting Regressor (unfiltered, unscaled features)")
+print_report(gb_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Filtered, unscaled features
 gb_filtered = GradientBoostingRegressor(random_state=42)
 gb_filtered.fit(X_train_filtered, y_train)
-print("\nGradient Boosting Regressor (with feature filtering)")
+print("\nGradient Boosting Regressor (filtered, unscaled features)")
 print_report(gb_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
 
-# %% [markdown]
-# Hyperparameter tuning for Gradient Boosting with filtered features
+# 3. Filtered, scaled features
+gb_filtered_scaled = GradientBoostingRegressor(random_state=42)
+gb_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+print("\nGradient Boosting Regressor (filtered, scaled features)")
+print_report(gb_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
 
 # %%
+# Hyperparameter tuning for Gradient Boosting on different feature sets
 param_grid_gb = {
     'n_estimators': [100, 200],
     'max_depth': [3, 5, 7],
     'learning_rate': [0.01, 0.1, 0.2]
 }
 
-grid_search_gb = GridSearchCV(
+# 1. Tuned Gradient Boosting on unfiltered, unscaled features
+grid_search_gb_unfiltered = GridSearchCV(
     GradientBoostingRegressor(random_state=42),
     param_grid_gb,
     cv=3,
@@ -352,36 +414,69 @@ grid_search_gb = GridSearchCV(
     n_jobs=-1
 )
 
-grid_search_gb.fit(X_train_filtered, y_train)
-best_gb_filtered = grid_search_gb.best_estimator_
+grid_search_gb_unfiltered.fit(X_train, y_train)
+best_gb_unfiltered = grid_search_gb_unfiltered.best_estimator_
 
-print("\nTuned Gradient Boosting Regressor (with feature filtering)")
-print(f"Best parameters: {grid_search_gb.best_params_}")
+print("\nTuned Gradient Boosting Regressor (unfiltered, unscaled features)")
+print(f"Best parameters: {grid_search_gb_unfiltered.best_params_}")
+print_report(best_gb_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Tuned Gradient Boosting on filtered, unscaled features
+grid_search_gb_filtered = GridSearchCV(
+    GradientBoostingRegressor(random_state=42),
+    param_grid_gb,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_gb_filtered.fit(X_train_filtered, y_train)
+best_gb_filtered = grid_search_gb_filtered.best_estimator_
+
+print("\nTuned Gradient Boosting Regressor (filtered, unscaled features)")
+print(f"Best parameters: {grid_search_gb_filtered.best_params_}")
 print_report(best_gb_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
 
-# %% [markdown]
-# Support Vector Regressor with filtered and scaled features
+# 3. Tuned Gradient Boosting on filtered, scaled features
+grid_search_gb_filtered_scaled = GridSearchCV(
+    GradientBoostingRegressor(random_state=42),
+    param_grid_gb,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_gb_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+best_gb_filtered_scaled = grid_search_gb_filtered_scaled.best_estimator_
+
+print("\nTuned Gradient Boosting Regressor (filtered, scaled features)")
+print(f"Best parameters: {grid_search_gb_filtered_scaled.best_params_}")
+print_report(best_gb_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
 
 # %%
-X_train_filtered_scaled = X_train_scaled[features_after_multicoll_and_low_corr]
-X_test_filtered_scaled = X_test_scaled[features_after_multicoll_and_low_corr]
+# Support Vector Regressor on different feature sets
+# 1. Unfiltered, scaled features (SVR requires scaled features)
+svr_unfiltered_scaled = SVR()
+svr_unfiltered_scaled.fit(X_train_scaled, y_train)
+print("\nSupport Vector Regressor (unfiltered, scaled features)")
+print_report(svr_unfiltered_scaled, X_train_scaled, X_test_scaled, y_train, y_test)
 
-svr_filtered = SVR()
-svr_filtered.fit(X_train_filtered_scaled, y_train)
-print("\nSupport Vector Regressor (with feature filtering and scaling)")
-print_report(svr_filtered, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
-
-# %% [markdown]
-# Hyperparameter tuning for SVR with filtered features
+# 2. Filtered, scaled features
+svr_filtered_scaled = SVR()
+svr_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+print("\nSupport Vector Regressor (filtered, scaled features)")
+print_report(svr_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
 
 # %%
+# Hyperparameter tuning for SVR on different feature sets
 param_grid_svr = {
     'C': [0.1, 1, 10, 100],
     'gamma': ['scale', 'auto', 0.001, 0.01, 0.1, 1],
     'epsilon': [0.1, 0.2, 0.5]
 }
 
-grid_search_svr = GridSearchCV(
+# 1. Tuned SVR on unfiltered, scaled features
+grid_search_svr_unfiltered = GridSearchCV(
     SVR(),
     param_grid_svr,
     cv=3,
@@ -389,12 +484,183 @@ grid_search_svr = GridSearchCV(
     n_jobs=-1
 )
 
-grid_search_svr.fit(X_train_filtered_scaled, y_train)
-best_svr_filtered = grid_search_svr.best_estimator_
+grid_search_svr_unfiltered.fit(X_train_scaled, y_train)
+best_svr_unfiltered = grid_search_svr_unfiltered.best_estimator_
 
-print("\nTuned Support Vector Regressor (with feature filtering and scaling)")
-print(f"Best parameters: {grid_search_svr.best_params_}")
+print("\nTuned Support Vector Regressor (unfiltered, scaled features)")
+print(f"Best parameters: {grid_search_svr_unfiltered.best_params_}")
+print_report(best_svr_unfiltered, X_train_scaled, X_test_scaled, y_train, y_test)
+
+# 2. Tuned SVR on filtered, scaled features
+grid_search_svr_filtered = GridSearchCV(
+    SVR(),
+    param_grid_svr,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_svr_filtered.fit(X_train_filtered_scaled, y_train)
+best_svr_filtered = grid_search_svr_filtered.best_estimator_
+
+print("\nTuned Support Vector Regressor (filtered, scaled features)")
+print(f"Best parameters: {grid_search_svr_filtered.best_params_}")
 print_report(best_svr_filtered, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
+
+# %%
+# AdaBoost Regressor on different feature sets
+# 1. Unfiltered, unscaled features
+ada_unfiltered = AdaBoostRegressor(random_state=42)
+ada_unfiltered.fit(X_train, y_train)
+print("\nAdaBoost Regressor (unfiltered, unscaled features)")
+print_report(ada_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Filtered, unscaled features
+ada_filtered = AdaBoostRegressor(random_state=42)
+ada_filtered.fit(X_train_filtered, y_train)
+print("\nAdaBoost Regressor (filtered, unscaled features)")
+print_report(ada_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
+
+# 3. Filtered, scaled features
+ada_filtered_scaled = AdaBoostRegressor(random_state=42)
+ada_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+print("\nAdaBoost Regressor (filtered, scaled features)")
+print_report(ada_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
+
+# %%
+# Hyperparameter tuning for AdaBoost on different feature sets
+param_grid_ada = {
+    'n_estimators': [50, 100, 200],
+    'learning_rate': [0.01, 0.1, 0.2, 0.5, 1.0],
+    'random_state': [42]
+}
+
+# 1. Tuned AdaBoost on unfiltered, unscaled features
+grid_search_ada_unfiltered = GridSearchCV(
+    AdaBoostRegressor(),
+    param_grid_ada,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_ada_unfiltered.fit(X_train, y_train)
+best_ada_unfiltered = grid_search_ada_unfiltered.best_estimator_
+
+print("\nTuned AdaBoost Regressor (unfiltered, unscaled features)")
+print(f"Best parameters: {grid_search_ada_unfiltered.best_params_}")
+print_report(best_ada_unfiltered, X_train, X_test, y_train, y_test)
+
+# 2. Tuned AdaBoost on filtered, unscaled features
+grid_search_ada_filtered = GridSearchCV(
+    AdaBoostRegressor(),
+    param_grid_ada,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_ada_filtered.fit(X_train_filtered, y_train)
+best_ada_filtered = grid_search_ada_filtered.best_estimator_
+
+print("\nTuned AdaBoost Regressor (filtered, unscaled features)")
+print(f"Best parameters: {grid_search_ada_filtered.best_params_}")
+print_report(best_ada_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
+
+# 3. Tuned AdaBoost on filtered, scaled features
+grid_search_ada_filtered_scaled = GridSearchCV(
+    AdaBoostRegressor(),
+    param_grid_ada,
+    cv=3,
+    scoring='r2',
+    n_jobs=-1
+)
+
+grid_search_ada_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+best_ada_filtered_scaled = grid_search_ada_filtered_scaled.best_estimator_
+
+print("\nTuned AdaBoost Regressor (filtered, scaled features)")
+print(f"Best parameters: {grid_search_ada_filtered_scaled.best_params_}")
+print_report(best_ada_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
+
+# %%
+# XGBoost Regressor on different feature sets (if available)
+if xgb_available:
+    # 1. Unfiltered, unscaled features
+    xgb_unfiltered = XGBRegressor(random_state=42, n_jobs=-1)
+    xgb_unfiltered.fit(X_train, y_train)
+    print("\nXGBoost Regressor (unfiltered, unscaled features)")
+    print_report(xgb_unfiltered, X_train, X_test, y_train, y_test)
+    
+    # 2. Filtered, unscaled features
+    xgb_filtered = XGBRegressor(random_state=42, n_jobs=-1)
+    xgb_filtered.fit(X_train_filtered, y_train)
+    print("\nXGBoost Regressor (filtered, unscaled features)")
+    print_report(xgb_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
+    
+    # 3. Filtered, scaled features
+    xgb_filtered_scaled = XGBRegressor(random_state=42, n_jobs=-1)
+    xgb_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+    print("\nXGBoost Regressor (filtered, scaled features)")
+    print_report(xgb_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
+    
+    # Hyperparameter tuning for XGBoost on different feature sets
+    param_grid_xgb = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [3, 5, 7],
+        'learning_rate': [0.01, 0.1, 0.2],
+        'subsample': [0.8, 1.0]
+    }
+    
+    # 1. Tuned XGBoost on unfiltered, unscaled features
+    grid_search_xgb_unfiltered = GridSearchCV(
+        XGBRegressor(random_state=42),
+        param_grid_xgb,
+        cv=3,
+        scoring='r2',
+        n_jobs=-1
+    )
+    
+    grid_search_xgb_unfiltered.fit(X_train, y_train)
+    best_xgb_unfiltered = grid_search_xgb_unfiltered.best_estimator_
+    
+    print("\nTuned XGBoost Regressor (unfiltered, unscaled features)")
+    print(f"Best parameters: {grid_search_xgb_unfiltered.best_params_}")
+    print_report(best_xgb_unfiltered, X_train, X_test, y_train, y_test)
+    
+    # 2. Tuned XGBoost on filtered, unscaled features
+    grid_search_xgb_filtered = GridSearchCV(
+        XGBRegressor(random_state=42),
+        param_grid_xgb,
+        cv=3,
+        scoring='r2',
+        n_jobs=-1
+    )
+    
+    grid_search_xgb_filtered.fit(X_train_filtered, y_train)
+    best_xgb_filtered = grid_search_xgb_filtered.best_estimator_
+    
+    print("\nTuned XGBoost Regressor (filtered, unscaled features)")
+    print(f"Best parameters: {grid_search_xgb_filtered.best_params_}")
+    print_report(best_xgb_filtered, X_train_filtered, X_test_filtered, y_train, y_test)
+    
+    # 3. Tuned XGBoost on filtered, scaled features
+    grid_search_xgb_filtered_scaled = GridSearchCV(
+        XGBRegressor(random_state=42),
+        param_grid_xgb,
+        cv=3,
+        scoring='r2',
+        n_jobs=-1
+    )
+    
+    grid_search_xgb_filtered_scaled.fit(X_train_filtered_scaled, y_train)
+    best_xgb_filtered_scaled = grid_search_xgb_filtered_scaled.best_estimator_
+    
+    print("\nTuned XGBoost Regressor (filtered, scaled features)")
+    print(f"Best parameters: {grid_search_xgb_filtered_scaled.best_params_}")
+    print_report(best_xgb_filtered_scaled, X_train_filtered_scaled, X_test_filtered_scaled, y_train, y_test)
+else:
+    print("\nXGBoost not available, skipping XGBoost models")
 
 # %% [markdown]
 # ## Model Comparison
@@ -423,48 +689,211 @@ models_and_results = {
         "MSE_test": mean_squared_error(y_test, lm_filtered.predict(X_test_filtered)),
         "X_test": X_test_filtered
     },
-    "Random Forest (Filtered)": {
+    # Random Forest models with different feature sets
+    "Random Forest (Unfiltered, Unscaled)": {
+        "model": rf_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, rf_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, rf_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "Random Forest (Filtered, Unscaled)": {
         "model": rf_filtered,
         "features": X_train_filtered.columns,
         "R2_test": r2_score(y_test, rf_filtered.predict(X_test_filtered)),
         "MSE_test": mean_squared_error(y_test, rf_filtered.predict(X_test_filtered)),
         "X_test": X_test_filtered
     },
-    "Tuned Random Forest (Filtered)": {
+    "Random Forest (Filtered, Scaled)": {
+        "model": rf_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, rf_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, rf_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # Tuned Random Forest models with different feature sets
+    "Tuned Random Forest (Unfiltered, Unscaled)": {
+        "model": best_rf_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, best_rf_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, best_rf_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "Tuned Random Forest (Filtered, Unscaled)": {
         "model": best_rf_filtered,
         "features": X_train_filtered.columns,
         "R2_test": r2_score(y_test, best_rf_filtered.predict(X_test_filtered)),
         "MSE_test": mean_squared_error(y_test, best_rf_filtered.predict(X_test_filtered)),
         "X_test": X_test_filtered
     },
-    "Gradient Boosting (Filtered)": {
+    "Tuned Random Forest (Filtered, Scaled)": {
+        "model": best_rf_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, best_rf_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, best_rf_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # Gradient Boosting models with different feature sets
+    "Gradient Boosting (Unfiltered, Unscaled)": {
+        "model": gb_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, gb_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, gb_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "Gradient Boosting (Filtered, Unscaled)": {
         "model": gb_filtered,
         "features": X_train_filtered.columns,
         "R2_test": r2_score(y_test, gb_filtered.predict(X_test_filtered)),
         "MSE_test": mean_squared_error(y_test, gb_filtered.predict(X_test_filtered)),
         "X_test": X_test_filtered
     },
-    "Tuned Gradient Boosting (Filtered)": {
+    "Gradient Boosting (Filtered, Scaled)": {
+        "model": gb_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, gb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, gb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # Tuned Gradient Boosting models with different feature sets
+    "Tuned Gradient Boosting (Unfiltered, Unscaled)": {
+        "model": best_gb_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, best_gb_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, best_gb_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "Tuned Gradient Boosting (Filtered, Unscaled)": {
         "model": best_gb_filtered,
         "features": X_train_filtered.columns,
         "R2_test": r2_score(y_test, best_gb_filtered.predict(X_test_filtered)),
         "MSE_test": mean_squared_error(y_test, best_gb_filtered.predict(X_test_filtered)),
         "X_test": X_test_filtered
     },
-    "SVR (Filtered)": {
-        "model": svr_filtered,
+    "Tuned Gradient Boosting (Filtered, Scaled)": {
+        "model": best_gb_filtered_scaled,
         "features": X_train_filtered.columns,
-        "R2_test": r2_score(y_test, svr_filtered.predict(X_test_filtered_scaled)),
-        "MSE_test": mean_squared_error(y_test, svr_filtered.predict(X_test_filtered_scaled)),
+        "R2_test": r2_score(y_test, best_gb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, best_gb_filtered_scaled.predict(X_test_filtered_scaled)),
         "X_test": X_test_filtered_scaled
     },
-    "Tuned SVR (Filtered)": {
+    # Support Vector Regressor models with different feature sets
+    "SVR (Unfiltered, Scaled)": {
+        "model": svr_unfiltered_scaled,
+        "features": X_train_scaled.columns,
+        "R2_test": r2_score(y_test, svr_unfiltered_scaled.predict(X_test_scaled)),
+        "MSE_test": mean_squared_error(y_test, svr_unfiltered_scaled.predict(X_test_scaled)),
+        "X_test": X_test_scaled
+    },
+    "SVR (Filtered, Scaled)": {
+        "model": svr_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, svr_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, svr_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # Tuned SVR models with different feature sets
+    "Tuned SVR (Unfiltered, Scaled)": {
+        "model": best_svr_unfiltered,
+        "features": X_train_scaled.columns,
+        "R2_test": r2_score(y_test, best_svr_unfiltered.predict(X_test_scaled)),
+        "MSE_test": mean_squared_error(y_test, best_svr_unfiltered.predict(X_test_scaled)),
+        "X_test": X_test_scaled
+    },
+    "Tuned SVR (Filtered, Scaled)": {
         "model": best_svr_filtered,
         "features": X_train_filtered.columns,
         "R2_test": r2_score(y_test, best_svr_filtered.predict(X_test_filtered_scaled)),
         "MSE_test": mean_squared_error(y_test, best_svr_filtered.predict(X_test_filtered_scaled)),
         "X_test": X_test_filtered_scaled
-    }
+    },
+    # AdaBoost models with different feature sets
+    "AdaBoost (Unfiltered, Unscaled)": {
+        "model": ada_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, ada_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, ada_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "AdaBoost (Filtered, Unscaled)": {
+        "model": ada_filtered,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, ada_filtered.predict(X_test_filtered)),
+        "MSE_test": mean_squared_error(y_test, ada_filtered.predict(X_test_filtered)),
+        "X_test": X_test_filtered
+    },
+    "AdaBoost (Filtered, Scaled)": {
+        "model": ada_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, ada_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, ada_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # Tuned AdaBoost models with different feature sets
+    "Tuned AdaBoost (Unfiltered, Unscaled)": {
+        "model": best_ada_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, best_ada_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, best_ada_unfiltered.predict(X_test)),
+        "X_test": X_test
+    },
+    "Tuned AdaBoost (Filtered, Unscaled)": {
+        "model": best_ada_filtered,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, best_ada_filtered.predict(X_test_filtered)),
+        "MSE_test": mean_squared_error(y_test, best_ada_filtered.predict(X_test_filtered)),
+        "X_test": X_test_filtered
+    },
+    "Tuned AdaBoost (Filtered, Scaled)": {
+        "model": best_ada_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, best_ada_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, best_ada_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    },
+    # XGBoost models with different feature sets (if available)
+    **({"XGBoost (Unfiltered, Unscaled)": {
+        "model": xgb_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, xgb_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, xgb_unfiltered.predict(X_test)),
+        "X_test": X_test
+    }} if 'xgb_unfiltered' in locals() and xgb_available else {}),
+    **({"XGBoost (Filtered, Unscaled)": {
+        "model": xgb_filtered,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, xgb_filtered.predict(X_test_filtered)),
+        "MSE_test": mean_squared_error(y_test, xgb_filtered.predict(X_test_filtered)),
+        "X_test": X_test_filtered
+    }} if 'xgb_filtered' in locals() and xgb_available else {}),
+    **({"XGBoost (Filtered, Scaled)": {
+        "model": xgb_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, xgb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, xgb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    }} if 'xgb_filtered_scaled' in locals() and xgb_available else {}),
+    **({"Tuned XGBoost (Unfiltered, Unscaled)": {
+        "model": best_xgb_unfiltered,
+        "features": X_train.columns,
+        "R2_test": r2_score(y_test, best_xgb_unfiltered.predict(X_test)),
+        "MSE_test": mean_squared_error(y_test, best_xgb_unfiltered.predict(X_test)),
+        "X_test": X_test
+    }} if 'best_xgb_unfiltered' in locals() and xgb_available else {}),
+    **({"Tuned XGBoost (Filtered, Unscaled)": {
+        "model": best_xgb_filtered,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, best_xgb_filtered.predict(X_test_filtered)),
+        "MSE_test": mean_squared_error(y_test, best_xgb_filtered.predict(X_test_filtered)),
+        "X_test": X_test_filtered
+    }} if 'best_xgb_filtered' in locals() and xgb_available else {}),
+    **({"Tuned XGBoost (Filtered, Scaled)": {
+        "model": best_xgb_filtered_scaled,
+        "features": X_train_filtered.columns,
+        "R2_test": r2_score(y_test, best_xgb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "MSE_test": mean_squared_error(y_test, best_xgb_filtered_scaled.predict(X_test_filtered_scaled)),
+        "X_test": X_test_filtered_scaled
+    }} if 'best_xgb_filtered_scaled' in locals() and xgb_available else {})
 }
 
 # Create a DataFrame for better visualization
