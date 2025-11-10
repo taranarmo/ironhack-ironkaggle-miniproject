@@ -56,10 +56,10 @@ If you have [Nix](https://nixos.org/) then `nix develop` will create working env
 
 ## Deliverables
 
-- Jupyter Notebook (`notebook.ipynb` or `notebook.py`) containing all analysis, code, and results
-- Complete Python script (`run_analysis.py`) that executes the full analysis pipeline
+- Jupyter Notebook (`./notebook.ipynb` or `./notebook.py`) containing all analysis, code, and results
+- Complete Python script (`./run_analysis.py`) that executes the full analysis pipeline
 - Visualizations saved as images (correlation_matrix.png, feature_distribution.png, feature_importance.png, etc.)
-- Presentation slides summarizing the ML process, insights, and final model  
+- Presentation slides (`./presentation.md` source file and `./presentation.html` rendered slides) summarizing the ML process, insights, and final model  
 - This README file explaining the workflow, reasoning, and key decisions
 
 ## Key Findings
